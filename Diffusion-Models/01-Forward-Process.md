@@ -1,221 +1,231 @@
-# 01 正向扩散（Forward Diffusion Process）
+# 01 正向扩散（Forward Diffusion）
 
-## 1. 目标与基本设定
+## 1. 基本思想
 
-假设真实数据为 $x_0\in\mathbb R^d$，其分布 $q(x_0)$ 通常比较复杂。正向扩散通过逐步添加高斯噪声，使 $x_T$ 的分布接近标准高斯分布。正向过程是人为指定的，不需要神经网络训练。
+正向扩散是一个人为设计的加噪过程：从原始数据出发，每一步加入独立的高斯噪声，最终使数据分布接近标准高斯分布。正向过程本身不需要训练神经网络。
 
-选择噪声方差序列（noise schedule）
-$
-0<\beta_t<1,\qquad t=1,\ldots,T,
+设原始数据为 $x_0$，扩散总步数为 $T$。给定噪声日程 $\beta_t$，满足：
+
+$$
+0 < \beta_t < 1
 $$
 
-并定义
-$
-\alpha_t=1-\beta_t,\qquad
-\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s
-=\alpha_1\alpha_2\cdots\alpha_t,\qquad
-\bar{\alpha}_0=1.
+定义：
+
+$$
+\alpha_t = 1-\beta_t
 $$
 
-这里 $\prod$ 表示**连乘**，下标 $s=1$ 是起点，上标 $t$ 是终点；$\bar{\alpha}_t$ 是前 $t$ 步所有 $\alpha_s$ 的乘积，而不是某一步的 $\alpha_t$。
-
-## 2. 单步正向扩散
-
-令各时间步的噪声 $\epsilon_t\sim\mathcal N(0,I)$，且与 $x_0$ 独立。定义
-$
-x_t=\sqrt{\alpha_t}\,x_{t-1}
-+\sqrt{1-\alpha_t}\,\epsilon_t.
-$
-
-给定 $x_{t-1}$ 时，第一项是确定的，第二项是均值为零、协方差为 $(1-\alpha_t)I$ 的高斯向量，因此
-$
-\mathbb E[x_t\mid x_{t-1}]=\sqrt{\alpha_t}\,x_{t-1},
 $$
-$
-\mathrm{Cov}(x_t\mid x_{t-1})=(1-\alpha_t)I.
+\bar{\alpha}_t = \prod_{s=1}^{t}\alpha_s
 $$
 
-所以单步条件分布为
-$
-\boxed{
-q(x_t\mid x_{t-1})
-=\mathcal N\left(
-x_t;\sqrt{\alpha_t}\,x_{t-1},
-(1-\alpha_t)I
-\right).
-}
-$
+其中连乘符号表示：
 
-符号 $\mathcal N(x;\mu,\Sigma)$ 表示在 $x$ 处求值、均值为 $\mu$、协方差为 $\Sigma$ 的高斯密度。
-
-由于每一步只依赖上一状态与新噪声，整个过程是马尔可夫链：
-$
-q(x_{1:T}\mid x_0)
-=\prod_{t=1}^{T}q(x_t\mid x_{t-1}).
+$$
+\bar{\alpha}_t = \alpha_1\alpha_2\cdots\alpha_t
 $$
 
-平方根的作用是控制**方差**权重：独立噪声项的协方差等于系数平方乘以 $I$。不能因此断言任意原始数据的协方差始终为 $I$。
+因此：
 
-## 3. 从第一步推导到第二步
+$$
+\bar{\alpha}_t = \alpha_t\bar{\alpha}_{t-1}
+$$
+
+## 2. 单步加噪公式
+
+每一步按以下公式加噪：
+
+$$
+x_t = \sqrt{\alpha_t}x_{t-1}+\sqrt{1-\alpha_t}\epsilon_t
+$$
+
+这里 $\epsilon_t$ 是标准高斯噪声，各步噪声相互独立：
+
+$$
+\epsilon_t \sim \mathcal{N}(0,I)
+$$
+
+给定 $x_{t-1}$ 后，只有噪声项是随机的，因此条件均值为：
+
+$$
+E[x_t \mid x_{t-1}] = \sqrt{\alpha_t}x_{t-1}
+$$
+
+条件协方差为：
+
+$$
+\mathrm{Cov}(x_t \mid x_{t-1}) = (1-\alpha_t)I
+$$
+
+所以单步转移服从高斯分布：
+
+$$
+q(x_t \mid x_{t-1}) = \mathcal{N}(\sqrt{\alpha_t}x_{t-1},(1-\alpha_t)I)
+$$
+
+由于下一步只依赖当前状态，这构成一个马尔可夫过程。
+
+## 3. 展开前两步
 
 第一步：
-$
-x_1=\sqrt{\alpha_1}\,x_0
-+\sqrt{1-\alpha_1}\,\epsilon_1.
-$
+
+$$
+x_1 = \sqrt{\alpha_1}x_0+\sqrt{1-\alpha_1}\epsilon_1
+$$
 
 第二步：
-$
-x_2=\sqrt{\alpha_2}\,x_1
-+\sqrt{1-\alpha_2}\,\epsilon_2.
+
+$$
+x_2 = \sqrt{\alpha_2}x_1+\sqrt{1-\alpha_2}\epsilon_2
 $$
 
-代入第一步的表达式，逐项展开：
-$
-\begin{aligned}
-x_2
-&=\sqrt{\alpha_2}
-\left(\sqrt{\alpha_1}\,x_0
-+\sqrt{1-\alpha_1}\,\epsilon_1\right)
-+\sqrt{1-\alpha_2}\,\epsilon_2\\
-&=\sqrt{\alpha_1\alpha_2}\,x_0
-+\underbrace{
-\sqrt{\alpha_2(1-\alpha_1)}\,\epsilon_1
-+\sqrt{1-\alpha_2}\,\epsilon_2
-}_{z_2}.
-\end{aligned}
-$
+把第一步代入第二步：
 
-现在研究噪声和 $z_2$。因为 $\epsilon_1,\epsilon_2$ 相互独立且均为标准高斯向量，它们的线性组合仍是高斯向量，并且
-$
-\mathbb E[z_2]=0.
+$$
+x_2 = \sqrt{\alpha_2}(\sqrt{\alpha_1}x_0+\sqrt{1-\alpha_1}\epsilon_1)+\sqrt{1-\alpha_2}\epsilon_2
 $$
 
-利用独立性，交叉协方差为零：
-$
-\begin{aligned}
-\mathrm{Cov}(z_2)
-&=\alpha_2(1-\alpha_1)I+(1-\alpha_2)I\\
-&=\left(\alpha_2-\alpha_1\alpha_2+1-\alpha_2\right)I\\
-&=(1-\alpha_1\alpha_2)I.
-\end{aligned}
-$
+展开并合并信号系数：
 
-因此
-$
-z_2\sim\mathcal N(0,(1-\alpha_1\alpha_2)I).
+$$
+x_2 = \sqrt{\alpha_1\alpha_2}x_0+\sqrt{\alpha_2(1-\alpha_1)}\epsilon_1+\sqrt{1-\alpha_2}\epsilon_2
 $$
 
-一个标准高斯向量 $\epsilon\sim\mathcal N(0,I)$ 乘以 $\sqrt{1-\alpha_1\alpha_2}$ 后，恰好具有相同分布。所以给定 $x_0$，
-$
-\boxed{
-x_2\stackrel{d}{=}
-\sqrt{\alpha_1\alpha_2}\,x_0
-+\sqrt{1-\alpha_1\alpha_2}\,\epsilon.
-}
-$
+现在把后两项记为 $z$：
 
-$\stackrel{d}{=}$ 表示**同分布**，不是说不同噪声样本逐点相等。
-
-## 4. 从第二步推广到任意第 t 步
-
-用数学归纳法。假设在第 $t-1$ 步已经成立：
-$
-x_{t-1}\mid x_0
-\stackrel{d}{=}
-\sqrt{\bar{\alpha}_{t-1}}\,x_0
-+\sqrt{1-\bar{\alpha}_{t-1}}\,\epsilon',
+$$
+z = \sqrt{\alpha_2(1-\alpha_1)}\epsilon_1+\sqrt{1-\alpha_2}\epsilon_2
 $$
 
-其中 $\epsilon'\sim\mathcal N(0,I)$，并且它与新加入的 $\epsilon_t$ 独立。
+两个独立高斯变量的线性组合仍是高斯变量，且均值为零：
 
-将其代入单步加噪公式：
-$
-\begin{aligned}
-x_t\mid x_0
-\stackrel{d}{=}{}&
-\sqrt{\alpha_t\bar{\alpha}_{t-1}}\,x_0\\
-&+\sqrt{\alpha_t(1-\bar{\alpha}_{t-1})}\,\epsilon'
-+\sqrt{1-\alpha_t}\,\epsilon_t.
-\end{aligned}
-$
+$$
+E[z] = 0
+$$
 
-后两项的协方差为
-$
-\begin{aligned}
-&\left[\alpha_t(1-\bar{\alpha}_{t-1})+(1-\alpha_t)\right]I\\
-&=\left(1-\alpha_t\bar{\alpha}_{t-1}\right)I\\
-&=(1-\bar{\alpha}_t)I,
-\end{aligned}
-$
+利用独立性，协方差等于两项协方差之和：
 
-其中最后一步用到了连乘关系
-$
-\bar{\alpha}_t
-=\prod_{s=1}^{t}\alpha_s
-=\alpha_t\prod_{s=1}^{t-1}\alpha_s
-=\alpha_t\bar{\alpha}_{t-1}.
-$
+$$
+\mathrm{Cov}(z) = \alpha_2(1-\alpha_1)I+(1-\alpha_2)I
+$$
 
-因此两项独立高斯噪声可以合并为一个同分布的高斯噪声，得到核心闭式表达式：
-$
-\boxed{
-x_t\mid x_0\stackrel{d}{=}
-\sqrt{\bar{\alpha}_t}\,x_0
-+\sqrt{1-\bar{\alpha}_t}\,\epsilon,
-\quad \epsilon\sim\mathcal N(0,I).
-}
-$
+整理：
 
-其对应的条件分布为
-$
-\boxed{
-q(x_t\mid x_0)=
-\mathcal N\left(
-x_t;\sqrt{\bar{\alpha}_t}\,x_0,
+$$
+\mathrm{Cov}(z) = (1-\alpha_1\alpha_2)I
+$$
+
+因此，$z$ 与下面的随机变量具有相同分布：
+
+$$
+\sqrt{1-\alpha_1\alpha_2}\epsilon
+$$
+
+其中 $\epsilon$ 是新的标准高斯随机变量。于是，给定 $x_0$ 时，$x_2$ 的分布可由下式直接采样：
+
+$$
+x_2 = \sqrt{\alpha_1\alpha_2}x_0+\sqrt{1-\alpha_1\alpha_2}\epsilon
+$$
+
+注意：这里的等号表示我们可以用右边构造一个**同分布的样本**，不表示两次独立采样得到的数值必然相等。
+
+## 4. 推广到任意时刻
+
+假设第 $t-1$ 步可以直接写为：
+
+$$
+x_{t-1} = \sqrt{\bar{\alpha}_{t-1}}x_0+\sqrt{1-\bar{\alpha}_{t-1}}\epsilon'
+$$
+
+这里的表达式同样用于构造条件分布相同的样本，$\epsilon'$ 是与新噪声 $\epsilon_t$ 独立的标准高斯噪声。
+
+代入单步加噪公式：
+
+$$
+x_t = \sqrt{\alpha_t}(\sqrt{\bar{\alpha}_{t-1}}x_0+\sqrt{1-\bar{\alpha}_{t-1}}\epsilon')+\sqrt{1-\alpha_t}\epsilon_t
+$$
+
+展开信号部分：
+
+$$
+x_t = \sqrt{\alpha_t\bar{\alpha}_{t-1}}x_0+\sqrt{\alpha_t(1-\bar{\alpha}_{t-1})}\epsilon'+\sqrt{1-\alpha_t}\epsilon_t
+$$
+
+后两项仍是独立高斯噪声的线性组合，其协方差为：
+
+$$
+[\alpha_t(1-\bar{\alpha}_{t-1})+(1-\alpha_t)]I
+$$
+
+化简：
+
+$$
+(1-\alpha_t\bar{\alpha}_{t-1})I
+$$
+
+利用连乘关系：
+
+$$
+\alpha_t\bar{\alpha}_{t-1} = \bar{\alpha}_t
+$$
+
+所以合并后的噪声协方差为：
+
+$$
 (1-\bar{\alpha}_t)I
-\right).
-}
-$
-
-这说明：**给定原始数据 $x_0$，可以直接采样任意时刻的 $x_t$，不必真的执行前 $t$ 次加噪。**
-
-## 5. 为什么最终接近标准高斯分布
-
-若噪声日程选择得使
-$
-\bar{\alpha}_T=\prod_{s=1}^{T}(1-\beta_s)\approx0,
 $$
 
-则闭式表达式中/的原始信号系数接近零，而噪声系数接近一：
-$
-x_T\mid x_0\approx\epsilon,
-\qquad
-q(x_T\mid x_0)\approx\mathcal N(0,I).
+最终得到正向扩散最重要的闭式采样公式：
+
+$$
+x_t = \sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon
 $$
 
-这是**分布上的近似**，有限步时一般不是严格相等。
+其中 $\epsilon$ 服从标准高斯分布。严格地说，上式表示给定 $x_0$ 时的一种等价采样方式。
 
-## 6. 本章结论
+因此：
 
-正向扩散最重要的两个公式：
-
-**单步转移**
-$
-q(x_t\mid x_{t-1})=
-\mathcal N\left(
-x_t;\sqrt{\alpha_t}\,x_{t-1},(1-\alpha_t)I
-\right).
+$$
+q(x_t \mid x_0) = \mathcal{N}(\sqrt{\bar{\alpha}_t}x_0,(1-\bar{\alpha}_t)I)
 $$
 
-**任意时刻的闭式分布**
-$
-q(x_t\mid x_0)=
-\mathcal N\left(
-x_t;\sqrt{\bar{\alpha}_t}\,x_0,(1-\bar{\alpha}_t)I
-\right),
-\qquad
-\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s.
+**结论：**已知原始数据 $x_0$，可以直接采样任意时刻的 $x_t$，不必真正执行前面的所有加噪步骤。
+
+## 5. 为什么最后会接近标准高斯分布
+
+如果噪声日程使得：
+
+$$
+\bar{\alpha}_T \approx 0
+$$
+
+那么原始数据前面的系数接近零，噪声前面的系数接近一。因此：
+
+$$
+q(x_T \mid x_0) \approx \mathcal{N}(0,I)
+$$
+
+这里是概率分布的近似，而不是每条样本轨迹严格相等。
+
+## 6. 核心结论
+
+单步加噪：
+
+$$
+q(x_t \mid x_{t-1}) = \mathcal{N}(\sqrt{\alpha_t}x_{t-1},(1-\alpha_t)I)
+$$
+
+任意时刻的闭式分布：
+
+$$
+q(x_t \mid x_0) = \mathcal{N}(\sqrt{\bar{\alpha}_t}x_0,(1-\bar{\alpha}_t)I)
+$$
+
+连乘定义：
+
+$$
+\bar{\alpha}_t = \prod_{s=1}^{t}\alpha_s
 $$
 
 下一章：[02 反向扩散](02-Reverse-Process.md)。
