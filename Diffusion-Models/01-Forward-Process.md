@@ -38,7 +38,7 @@ $$
 $$
 
 $$
-\operatorname{Cov}(x_t\mid x_{t-1})=(1-\alpha_t)I.
+\mathrm{Cov}(x_t\mid x_{t-1})=(1-\alpha_t)I.
 $$
 
 所以单步条件分布为
@@ -110,7 +110,7 @@ $$
 
 $$
 \begin{aligned}
-\operatorname{Cov}(z_2)
+\mathrm{Cov}(z_2)
 &=\alpha_2(1-\alpha_1)I+(1-\alpha_2)I\\
 &=\left(\alpha_2-\alpha_1\alpha_2+1-\alpha_2\right)I\\
 &=(1-\alpha_1\alpha_2)I.
