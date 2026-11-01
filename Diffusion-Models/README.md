@@ -6,7 +6,7 @@
 |---|---|---|
 | 01 | [正向扩散](01-Forward-Process.md) | 已整理 |
 | 02 | [反向扩散](02-Reverse-Process.md) | 已整理 |
-| 03 | [DDPM 训练与损失函数](03-DDPM.md) | 待学习 |
+| 03 | [DDPM 训练目标与采样算法](03-DDPM.md) | 已整理 |
 | 04 | [DDIM 采样](04-DDIM.md) | 待学习 |
 | 05 | [Score Matching 与 SDE](05-Score-SDE.md) | 待学习 |
 | 06 | [模型结构](06-Architecture.md) | 待学习 |
