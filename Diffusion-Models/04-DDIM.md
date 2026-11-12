@@ -420,7 +420,29 @@ x_t=\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon
 - 用预测的 $`\epsilon_\theta`$ 和估计的 $`\hat{x}_0`$ 替换真实量，得到采样更新公式。
 - 由于简单训练损失只用到了这些相同的边缘条件分布，DDIM 可以复用 DDPM 的网络。
 
-## 15.2 eta = 1：与 DDPM 的关系
+## 15. DDIM 的随机性参数 eta
+
+DDIM 通过 eta 调整额外的随机噪声强度。对 s<t：
+
+```math
+\sigma_{t\to s}=\eta\sqrt{\frac{1-\bar{\alpha}_s}{1-\bar{\alpha}_t}}
+\sqrt{1-\frac{\bar{\alpha}_t}{\bar{\alpha}_s}}
+```
+
+通常 eta 取 0 到 1。增大 eta 时，预测噪声方向的系数也会发生变化，不只是简单地增加噪声。
+
+### 15.1 eta = 0：确定性 DDIM
+
+当 eta = 0 时，随机项的标准差为零，更新公式变成：
+
+```math
+\boxed{x_s=\sqrt{\bar{\alpha}_s}\hat{x}_0+
+\sqrt{1-\bar{\alpha}_s}\epsilon_\theta(x_t,t)}
+```
+
+因此固定初始噪声、网络和时间步序列后，生成轨迹是确定的；更换初始噪声仍能生成不同样本。
+
+### 15.2 eta = 1：与 DDPM 的关系
 
 设 s=t-1。利用累计系数关系，可推导：
 
